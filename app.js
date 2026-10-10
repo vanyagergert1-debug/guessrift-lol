@@ -1,5 +1,5 @@
 const $=s=>document.querySelector(s);
-const state={version:null,champions:[],byName:{},roomObj:null,action:null,isHost:false,room:null,myId:null,secret:null,opponent:null,myTurn:false,score:0,oppScore:0,timer:null,time:60,gameStarted:false};
+const state={version:null,champions:[],byName:{},roomObj:null,action:null,isHost:false,room:null,myId:null,secret:null,opponent:null,myTurn:false,score:0,oppScore:0,timer:null,time:60,gameStarted:false,connectTimer:null};
 function art(c){return `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${c.id}_0.jpg`}
 function icon(c){return `https://ddragon.leagueoflegends.com/cdn/${state.version}/img/champion/${c.id}.png`}
 async function loadChampions(){try{const vr=await fetch('https://ddragon.leagueoflegends.com/api/versions.json');const versions=await vr.json();state.version=versions[0];const r=await fetch(`https://ddragon.leagueoflegends.com/cdn/${state.version}/data/en_US/champion.json`);const d=await r.json();state.champions=Object.values(d.data).map(x=>({id:x.id,name:x.name,title:x.title,roles:x.tags||[],difficulty:x.info?.difficulty||2}));}catch(e){toast('Не удалось загрузить список чемпионов. Проверь интернет.');throw e}state.champions.forEach(c=>state.byName[c.name.toLowerCase()]=c);$('#champCount').textContent=state.champions.length;$('#championsList').innerHTML=state.champions.map(c=>`<option value="${esc(c.name)}"></option>`).join('');renderRoster()}
@@ -10,7 +10,7 @@ function setConn(ok){$('#connection').className='connection '+(ok?'online':'offl
 function randomSecret(){return state.champions[Math.floor(Math.random()*state.champions.length)]}
 function send(msg){if(state.action)state.action.send(msg)}
 function showGame(){$('#lobby').classList.add('hidden');$('#room').classList.remove('hidden');$('#roomCode').textContent=state.room}
-function startGame(oppSecret){if(state.gameStarted)return;state.gameStarted=true;state.opponent=oppSecret;state.myTurn=state.isHost;$('#waiting').classList.add('hidden');$('#game').classList.remove('hidden');$('#opponentArt').style.backgroundImage=`url("${art(oppSecret)}")`;$('#opponentStatus').textContent='Чемпион скрыт';$('#secretCard .secret-art').style.backgroundImage=`url("${art(state.secret)}")`;$('#secretCard .secret-art').style.filter='blur(18px) brightness(.35)';updateTurn();resetTimer()}
+function startGame(oppSecret){if(state.gameStarted)return;clearTimeout(state.connectTimer);state.gameStarted=true;state.opponent=oppSecret;state.myTurn=state.isHost;$('#waiting').classList.add('hidden');$('#game').classList.remove('hidden');$('#opponentArt').style.backgroundImage=`url("${art(oppSecret)}")`;$('#opponentStatus').textContent='Чемпион скрыт';$('#secretCard .secret-art').style.backgroundImage=`url("${art(state.secret)}")`;$('#secretCard .secret-art').style.filter='blur(18px) brightness(.35)';updateTurn();resetTimer()}
 function updateTurn(){$('#turnText').textContent=state.myTurn?'ТВОЙ ХОД':'ХОД СОПЕРНИКА';document.querySelectorAll('.turn-actions button,#guessBtn').forEach(b=>b.disabled=!state.myTurn);$('#guessInput').disabled=!state.myTurn}
 function resetTimer(){clearInterval(state.timer);state.time=60;$('#timer').textContent=state.time;state.timer=setInterval(()=>{if(!state.myTurn)return;state.time--;$('#timer').textContent=state.time;if(state.time<=0){clearInterval(state.timer);passTurn()}},1000)}
 function passTurn(){send({t:'turn'});state.myTurn=false;updateTurn();clearInterval(state.timer);toast('Ход передан сопернику.')}
@@ -27,39 +27,54 @@ function updateShareUrl(room){try{const url=new URL(location.href);url.searchPar
 function roomFromInput(value){try{const u=new URL(value);return u.searchParams.get('room')||''}catch(e){return value.trim()}}
 function getRoomFromUrl(){try{return new URL(location.href).searchParams.get('room')||''}catch(e){return ''}}
 async function loadTrystero(){
-  const urls=['https://esm.run/@trystero-p2p/mqtt','https://cdn.jsdelivr.net/npm/@trystero-p2p/mqtt@0.26.0/+esm'];
+  const urls=['https://esm.run/trystero@0.26.0','https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm'];
   let last=null;
-  for(const url of urls){try{return await import(url)}catch(e){last=e;console.warn('Trystero MQTT CDN failed:',url,e)}}
-  throw last||new Error('Trystero MQTT unavailable')
+  for(const url of urls){try{return await import(url)}catch(e){last=e;console.warn('Trystero CDN failed:',url,e)}}
+  throw last||new Error('Trystero unavailable')
 }
+const turnConfig=[
+  {urls:['turn:openrelay.metered.ca:80?transport=udp','turn:openrelay.metered.ca:80?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'},
+  {urls:['turn:openrelay.metered.ca:443?transport=udp','turn:openrelay.metered.ca:443?transport=tcp','turns:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}
+];
 async function newPeer(){
+  clearTimeout(state.connectTimer);
   try{
     const {joinRoom}=await loadTrystero();
-    state.roomObj=joinRoom({appId:'guessrift-lol-v2',relayConfig:{redundancy:3}},state.room,{
+    if(state.roomObj){try{await state.roomObj.leave()}catch(e){}state.roomObj=null;state.action=null}
+    state.roomObj=joinRoom({appId:'guessrift-lol-v3',turnConfig},state.room,{
       onJoinError:({peerId,error})=>{
-        console.error('P2P join error',peerId,error);
+        console.error('WebRTC join error',peerId,error);
         setConn(false);
-        showNetError('Не удалось соединить игроков. Проверь, что у вас обоих открыта свежая версия игры, и подожди 5–10 секунд.')
+        showNetError('Не удалось соединить игроков. Проверь интернет и попробуй ещё раз.');
       }
     });
     state.action=state.roomObj.makeAction('game');
     state.action.onMessage=(msg)=>handle(msg);
     state.roomObj.onPeerJoin=(peerId)=>{
       console.log('Peer connected:',peerId);
+      clearTimeout(state.connectTimer);
       setConn(true);
-      send({t:'hello',secret:state.secret})
+      send({t:'hello',secret:state.secret});
     };
     state.roomObj.onPeerLeave=(peerId)=>{
       console.log('Peer left:',peerId);
       setConn(false);
-      toast('Соперник отключился.')
+      if(state.gameStarted)toast('Соперник отключился.');
     };
     setConn(false);
-    if(state.isHost){updateShareUrl(state.room);showGame();toast('Комната создана. Отправь ссылку другу.')}else{showGame();toast('Ищем игрока в комнате...')}
-  }catch(e){console.error('Trystero MQTT error:',e);setConn(false);showNetError('Не удалось запустить сетевое соединение. Обнови страницу и попробуй ещё раз.')}
+    if(state.isHost){updateShareUrl(state.room);showGame();toast('Комната создана. Отправь ссылку другу.')}else{showGame();toast('Подключаемся к комнате...')}
+    state.connectTimer=setTimeout(()=>{
+      if(!state.gameStarted&&!$('#netError').classList.contains('hidden'))return;
+      if(!state.gameStarted)showNetError('Соперник ещё не подключился. Убедись, что он открыл именно эту ссылку.');
+    },15000);
+  }catch(e){
+    console.error('Trystero error:',e);
+    setConn(false);
+    showNetError('Не удалось запустить сетевое соединение. Обнови страницу и попробуй ещё раз.');
+  }
 }
-async function createRoom(){try{await championsReady;state.isHost=true;state.secret=randomSecret();state.room=makeRoomId();await newPeer()}catch(e){showNetError('Не удалось загрузить чемпионов Riot.')}}
-async function joinRoom(code){try{await championsReady;const room=roomFromInput(code);if(!room)return toast('Вставь ссылку или код комнаты.');state.isHost=false;state.room=room;state.secret=randomSecret();await newPeer()}catch(e){showNetError('Не удалось загрузить чемпионов Riot.')}}
+async function createRoom(){try{await championsReady;state.isHost=true;state.secret=randomSecret();state.room=makeRoomId();showGame();updateShareUrl(state.room);toast('Комната создаётся...');await newPeer()}catch(e){showNetError('Не удалось загрузить чемпионов Riot.')}}
+async function joinRoom(code){try{await championsReady;const room=roomFromInput(code);if(!room)return toast('Вставь ссылку или код комнаты.');state.isHost=false;state.room=room;state.secret=randomSecret();showGame();await newPeer()}catch(e){showNetError('Не удалось загрузить чемпионов Riot.')}}
 $('#createBtn').onclick=createRoom;$('#joinBtn').onclick=()=>joinRoom($('#roomInput').value);$('#filterInput').oninput=renderRoster;$('#guessBtn').onclick=guess;$('#passBtn').onclick=passTurn;$('#yesBtn').onclick=()=>answer(true);$('#noBtn').onclick=()=>answer(false);$('#guessInput').addEventListener('keydown',e=>{if(e.key==='Enter')guess()});document.querySelectorAll('[data-question]').forEach(b=>b.onclick=()=>question(b.textContent));$('#copyBtn').onclick=()=>navigator.clipboard?.writeText(location.href).then(()=>toast('Ссылка на игру скопирована.')).catch(()=>toast(location.href));$('#newGameBtn').onclick=()=>location.href=location.pathname;
 championsReady=loadChampions().catch(e=>{console.error(e);throw e});
 championsReady.then(()=>{const room=getRoomFromUrl();if(room){$('#roomInput').value=room;setTimeout(()=>joinRoom(room),150)}});
