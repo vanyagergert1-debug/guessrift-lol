@@ -1,65 +1,22 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>GuessRift — LoL Champion Duel</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cinzel:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GuessRift — LoL Champion Duel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cinzel:wght@600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <div class="noise"></div>
-  <main class="app">
-    <header class="topbar">
-      <div class="brand"><div class="crest">✦</div><div><div class="eyebrow">LEAGUE OF LEGENDS • DUEL</div><h1>GUESS<span>RIFT</span></h1></div></div>
-      <div id="connection" class="connection offline">Не подключено</div>
-    </header>
-
-    <section id="lobby" class="panel lobby">
-      <div class="hero-copy"><span class="badge">2 PLAYER BROWSER GAME</span><h2>Угадай чемпиона.<br><em>Переиграй друга.</em></h2><p>Создай комнату, отправь ссылку другу и сыграй дуэль. В матче участвуют 30 случайных чемпионов, а центральная доска помогает отмечать кандидатов и исключённых.</p></div>
-      <div class="lobby-grid"><button id="createBtn" class="gold-btn">Создать комнату</button><div class="join-row"><input id="roomInput" maxlength="120" placeholder="Код или ссылка комнаты"><button id="joinBtn" class="dark-btn">Войти</button></div></div>
-      <div class="notice"><b>Совет:</b> после создания комнаты отправь другу именно скопированную ссылку — она уже содержит код комнаты.</div>
-    </section>
-
-    <section id="room" class="hidden">
-      <div class="room-head panel"><div><span class="eyebrow">КОМНАТА</span><div class="room-code"><span id="roomCode">—</span><button id="copyBtn">Копировать ссылку</button></div></div><div class="players"><div class="player-pill"><span class="dot"></span>Вы</div><div class="vs">VS</div><div class="player-pill"><span id="themDot" class="dot muted"></span><span id="themName">Ожидание…</span></div></div></div>
-
-      <div id="waiting" class="panel waiting"><div class="spinner"></div><h3 id="waitingTitle">Ждём второго игрока</h3><p id="waitingText">Оба игрока должны подключиться и загрузить список чемпионов.</p></div>
-
-      <div id="selection" class="panel selection hidden">
-        <div class="selection-head"><div><span class="eyebrow">ВЫБОР</span><h3>Выбери тайного чемпиона</h3><p id="selectedHint">Выбор виден только тебе.</p></div><div class="selected-preview"><div id="selectedArt" class="selected-art"></div><div><span class="eyebrow">ТВОЙ ВЫБОР</span><strong id="selectedName">Не выбран</strong></div></div></div>
-        <div class="pool-title"><span>30 доступных чемпионов</span><b><span id="poolCount">30</span> / 30</b></div>
-        <input id="filterInput" class="filter" placeholder="Поиск чемпиона…">
-        <div id="champGrid" class="champ-grid selection-grid"></div>
-      </div>
-
-      <section id="game" class="hidden game-wrap">
-        <div class="turnbar panel"><div><span class="eyebrow">ХОД</span><strong id="turnText">—</strong></div><div class="timer-wrap"><span>ВРЕМЯ</span><b id="timer">60</b></div><div class="score"><span id="scoreYou">0</span><i>:</i><span id="scoreThem">0</span></div></div>
-
-        <div class="game-top panel">
-          <div class="secret-mini"><div id="secretArt" class="secret-mini-art"></div><div><span class="eyebrow">ТВОЙ ТАЙНЫЙ ЧЕМПИОН</span><strong>Скрыт от соперника</strong></div></div>
-          <div class="opponent-mini"><div id="opponentArt" class="opponent-mini-art"></div><div><span class="eyebrow">СОПЕРНИК</span><strong id="opponentStatus">Чемпион скрыт</strong></div></div>
-          <div class="board-legend"><span><b class="mark-dot possible">✓</b> кандидат</span><span><b class="mark-dot excluded">×</b> исключён</span><small>Нажимай на карточку 30 чемпионов, чтобы менять отметку.</small></div>
-        </div>
-
-        <section class="champ-board panel">
-          <div class="board-head"><div><span class="eyebrow">ЦЕНТРАЛЬНАЯ ДОСКА</span><h3>30 чемпионов</h3></div><input id="gameFilter" class="board-filter" placeholder="Поиск…"></div>
-          <div id="gameChampGrid" class="game-champ-grid"></div>
-        </section>
-
-        <section class="bottom-dock panel">
-          <div class="chat-head"><div><span class="eyebrow">ЧАТ</span><h3>Задавай вопросы</h3></div><span id="chatHint">Сейчас ход соперника.</span></div>
-          <div id="questionFeed" class="feed"></div>
-          <div class="bottom-inputs"><div class="chat-row"><input id="chatInput" placeholder="Например: «Он маг?»"><button id="chatSend" class="gold-btn small">Отправить</button></div><div class="guess-row"><input id="guessInput" list="championsList" placeholder="Твой ответ — имя чемпиона"><button id="guessBtn" class="gold-btn small">Угадать</button><button id="passBtn" class="dark-btn small">Передать ход</button></div></div>
-        </section>
-      </section>
-    </section>
-  </main>
-  <datalist id="championsList"></datalist>
-  <div id="toast" class="toast"></div><div id="netError" class="net-error hidden"></div>
-  <div id="winModal" class="modal hidden"><div class="modal-card"><div class="eyebrow">ДУЭЛЬ ОКОНЧЕН</div><h2 id="winTitle">Победа!</h2><div id="winArt" class="win-art"></div><p id="winSub"></p><button id="newGameBtn" class="gold-btn">Новая игра</button></div></div>
-  <script src="app.js"></script>
-</body>
-</html>
+<body><main class="app">
+<header class="topbar"><div class="brand"><div class="crest">✦</div><div><div class="eyebrow">LEAGUE OF LEGENDS • DUEL</div><h1>GUESS<span>RIFT</span></h1></div></div><div id="connection" class="connection offline">Не подключено</div></header>
+<section id="lobby" class="panel lobby"><div class="hero-copy"><span class="badge">2 PLAYER BROWSER GAME</span><h2>Угадай чемпиона.<br><em>Переиграй друга.</em></h2><p>Создай комнату, отправь ссылку другу и сыграй дуэль. В матче участвуют 30 случайных чемпионов.</p></div><div class="lobby-grid"><button id="createBtn" class="gold-btn">Создать комнату</button><div class="join-row"><input id="roomInput" maxlength="120" placeholder="Код или ссылка комнаты"><button id="joinBtn" class="dark-btn">Войти</button></div></div><div class="notice"><b>Совет:</b> отправь другу скопированную ссылку комнаты.</div></section>
+<section id="room" class="hidden">
+<div class="room-head panel"><div><span class="eyebrow">КОМНАТА</span><div class="room-code"><span id="roomCode">—</span><button id="copyBtn">Копировать</button></div></div><div class="players"><div class="player-pill"><span class="dot"></span>Вы</div><div class="vs">VS</div><div class="player-pill"><span id="themDot" class="dot muted"></span><span id="themName">Ожидание…</span></div></div></div>
+<div id="waiting" class="panel waiting"><div class="spinner"></div><div><h3 id="waitingTitle">Ждём второго игрока</h3><p id="waitingText">Оба игрока должны подключиться и загрузить список чемпионов.</p></div></div>
+<div id="selection" class="panel selection hidden"><div class="selection-head"><div><span class="eyebrow">ВЫБОР</span><h3>Выбери своего чемпиона</h3><p id="selectedHint">Выбор виден только тебе.</p></div><div class="selected-preview"><div id="selectedArt" class="selected-art"></div><div><span class="eyebrow">ТВОЙ ВЫБОР</span><strong id="selectedName">Не выбран</strong></div></div></div><div class="pool-title"><span>30 доступных чемпионов</span><b><span id="poolCount">30</span> / 30</b></div><input id="filterInput" class="filter" placeholder="Поиск чемпиона…"><div id="champGrid" class="champ-grid selection-grid"></div></div>
+<section id="game" class="hidden game-wrap">
+<div class="turnbar panel"><div><span class="eyebrow">ХОД</span><strong id="turnText">—</strong></div><div class="score"><span id="scoreYou">0</span><i>:</i><span id="scoreThem">0</span></div></div>
+<div class="game-top panel"><div class="secret-mini"><div id="secretArt" class="secret-mini-art"></div><div><span class="eyebrow">ТВОЙ ЧЕМПИОН</span><strong id="secretName">—</strong></div></div><div class="opponent-mini"><div id="opponentArt" class="opponent-mini-art"></div><div><span class="eyebrow">СОПЕРНИК</span><strong id="opponentStatus">Выбирает</strong></div></div><div class="board-legend"><span><b class="mark-dot possible">✓</b> кандидат</span><span><b class="mark-dot excluded">×</b> исключён</span><small>Нажимай карточки, чтобы менять отметки.</small></div></div>
+<section class="champ-board panel"><div class="board-head"><div><span class="eyebrow">ЦЕНТРАЛЬНАЯ ДОСКА</span><h3>30 чемпионов</h3></div><input id="gameFilter" class="board-filter" placeholder="Поиск…"></div><div id="gameChampGrid" class="game-champ-grid"></div></section>
+<section class="bottom-dock panel"><div class="chat-head"><div><span class="eyebrow">ЧАТ</span><h3>Вопросы и ответы</h3></div><span id="chatHint">Сейчас ход соперника.</span></div><div id="questionFeed" class="feed"></div><div class="bottom-inputs"><div class="chat-row"><input id="chatInput" placeholder="Например: «Он маг?»"><button id="chatSend" class="gold-btn small">Отправить</button></div><div class="guess-row"><input id="guessInput" list="championsList" placeholder="Имя чемпиона"><button id="guessBtn" class="gold-btn small">Угадать</button><button id="passBtn" class="dark-btn small">Передать ход</button></div></div></section>
+</section></section></main>
+<datalist id="championsList"></datalist><div id="toast" class="toast"></div><div id="netError" class="net-error hidden"></div><div id="winModal" class="modal hidden"><div class="modal-card"><div class="eyebrow">ДУЭЛЬ ОКОНЧЕН</div><h2 id="winTitle">Победа!</h2><div id="winArt" class="win-art"></div><p id="winSub"></p><button id="newGameBtn" class="gold-btn">Новая игра</button></div></div><script src="app.js"></script></body></html>
