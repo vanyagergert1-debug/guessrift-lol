@@ -22,13 +22,44 @@ function win(me,c){state.score+=me?1:0;state.oppScore+=me?0:1;$('#scoreYou').tex
 function handle(msg){if(!msg||!msg.t)return;if(msg.t==='hello'){send({t:'ready',secret:state.secret})}else if(msg.t==='ready'){startGame(msg.secret)}else if(msg.t==='question'){addFeed('Соперник',msg.text);toast('Твой ход: ответь Да или Нет.')}else if(msg.t==='answer')addFeed('Соперник','Ответ',msg.answer?'Да':'Нет');else if(msg.t==='turn'){state.myTurn=true;updateTurn();resetTimer();toast('Твой ход.')}else if(msg.t==='guess'){addFeed('Соперник','Догадка: '+msg.name);const c=state.byName[msg.name.toLowerCase()];if(c&&c.id===state.secret.id)win(false,c);else toast('Соперник ошибся.')}else if(msg.t==='gameover')toast(msg.winner==='you'?'Соперник победил.':'Ты победил!')}
 let championsReady=null;
 function makeRoomId(){return 'gr-'+Math.random().toString(36).slice(2,9)+'-'+Math.random().toString(36).slice(2,5)}
-function showNetError(message){const box=$('#netError');box.textContent=message;box.classList.remove('hidden');setTimeout(()=>box.classList.add('hidden'),9000)}
+function showNetError(message){const box=$('#netError');box.textContent=message;box.classList.remove('hidden');setTimeout(()=>box.classList.add('hidden'),12000)}
 function updateShareUrl(room){try{const url=new URL(location.href);url.searchParams.set('room',room);history.replaceState({},'',url.toString())}catch(e){}}
 function roomFromInput(value){try{const u=new URL(value);return u.searchParams.get('room')||''}catch(e){return value.trim()}}
 function getRoomFromUrl(){try{return new URL(location.href).searchParams.get('room')||''}catch(e){return ''}}
-async function loadTrystero(){const urls=['https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm','https://esm.run/trystero'];let last=null;for(const url of urls){try{return await import(url)}catch(e){last=e;console.warn('Trystero CDN failed:',url,e)}}throw last||new Error('Trystero unavailable')}
-async function newPeer(){try{const {joinRoom}=await loadTrystero();state.roomObj=joinRoom({appId:'guessrift-lol-v1'},state.room,{onJoinError:({peerId,error})=>{console.error('Peer join error',peerId,error);showNetError('Не удалось установить P2P-соединение. Если комната создана, подожди несколько секунд и обнови страницу.')}});state.action=state.roomObj.makeAction('game');state.action.onMessage=(msg)=>handle(msg);state.roomObj.onPeerJoin=()=>{setConn(true);send({t:'hello',secret:state.secret})};state.roomObj.onPeerLeave=()=>{setConn(false);toast('Соперник отключился.')};setConn(false);if(state.isHost){updateShareUrl(state.room);showGame();toast('Комната создана. Скопируй ссылку и отправь другу.')}else{showGame();toast('Подключаемся к комнате...')}}catch(e){console.error('Trystero error:',e);setConn(false);showNetError('Не удалось запустить сетевое соединение. Попробуй ещё раз через несколько секунд.')}}
+async function loadTrystero(){
+  const urls=['https://esm.run/@trystero-p2p/mqtt','https://cdn.jsdelivr.net/npm/@trystero-p2p/mqtt@0.26.0/+esm'];
+  let last=null;
+  for(const url of urls){try{return await import(url)}catch(e){last=e;console.warn('Trystero MQTT CDN failed:',url,e)}}
+  throw last||new Error('Trystero MQTT unavailable')
+}
+async function newPeer(){
+  try{
+    const {joinRoom}=await loadTrystero();
+    state.roomObj=joinRoom({appId:'guessrift-lol-v2',relayConfig:{redundancy:3}},state.room,{
+      onJoinError:({peerId,error})=>{
+        console.error('P2P join error',peerId,error);
+        setConn(false);
+        showNetError('Не удалось соединить игроков. Проверь, что у вас обоих открыта свежая версия игры, и подожди 5–10 секунд.')
+      }
+    });
+    state.action=state.roomObj.makeAction('game');
+    state.action.onMessage=(msg)=>handle(msg);
+    state.roomObj.onPeerJoin=(peerId)=>{
+      console.log('Peer connected:',peerId);
+      setConn(true);
+      send({t:'hello',secret:state.secret})
+    };
+    state.roomObj.onPeerLeave=(peerId)=>{
+      console.log('Peer left:',peerId);
+      setConn(false);
+      toast('Соперник отключился.')
+    };
+    setConn(false);
+    if(state.isHost){updateShareUrl(state.room);showGame();toast('Комната создана. Отправь ссылку другу.')}else{showGame();toast('Ищем игрока в комнате...')}
+  }catch(e){console.error('Trystero MQTT error:',e);setConn(false);showNetError('Не удалось запустить сетевое соединение. Обнови страницу и попробуй ещё раз.')}
+}
 async function createRoom(){try{await championsReady;state.isHost=true;state.secret=randomSecret();state.room=makeRoomId();await newPeer()}catch(e){showNetError('Не удалось загрузить чемпионов Riot.')}}
 async function joinRoom(code){try{await championsReady;const room=roomFromInput(code);if(!room)return toast('Вставь ссылку или код комнаты.');state.isHost=false;state.room=room;state.secret=randomSecret();await newPeer()}catch(e){showNetError('Не удалось загрузить чемпионов Riot.')}}
 $('#createBtn').onclick=createRoom;$('#joinBtn').onclick=()=>joinRoom($('#roomInput').value);$('#filterInput').oninput=renderRoster;$('#guessBtn').onclick=guess;$('#passBtn').onclick=passTurn;$('#yesBtn').onclick=()=>answer(true);$('#noBtn').onclick=()=>answer(false);$('#guessInput').addEventListener('keydown',e=>{if(e.key==='Enter')guess()});document.querySelectorAll('[data-question]').forEach(b=>b.onclick=()=>question(b.textContent));$('#copyBtn').onclick=()=>navigator.clipboard?.writeText(location.href).then(()=>toast('Ссылка на игру скопирована.')).catch(()=>toast(location.href));$('#newGameBtn').onclick=()=>location.href=location.pathname;
-championsReady=loadChampions().catch(e=>{console.error(e);throw e});championsReady.then(()=>{const room=getRoomFromUrl();if(room){$('#roomInput').value=room;setTimeout(()=>joinRoom(room),150)}});
+championsReady=loadChampions().catch(e=>{console.error(e);throw e});
+championsReady.then(()=>{const room=getRoomFromUrl();if(room){$('#roomInput').value=room;setTimeout(()=>joinRoom(room),150)}});
