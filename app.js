@@ -2,18 +2,14 @@ const $=s=>document.querySelector(s);
 const state={version:null,champions:[],byName:{},roomObj:null,action:null,isHost:false,room:null,myId:null,secret:null,opponent:null,myTurn:false,score:0,oppScore:0,timer:null,time:60,gameStarted:false};
 function art(c){return `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${c.id}_0.jpg`}
 function icon(c){return `https://ddragon.leagueoflegends.com/cdn/${state.version}/img/champion/${c.id}.png`}
-async function loadChampions(){
-  try{const vr=await fetch('https://ddragon.leagueoflegends.com/api/versions.json');const versions=await vr.json();state.version=versions[0];const r=await fetch(`https://ddragon.leagueoflegends.com/cdn/${state.version}/data/en_US/champion.json`);const d=await r.json();state.champions=Object.values(d.data).map(x=>({id:x.id,name:x.name,title:x.title,roles:x.tags||[],difficulty:x.info?.difficulty||2}));}
-  catch(e){toast('Не удалось загрузить список чемпионов. Проверь интернет.');throw e}
-  state.champions.forEach(c=>state.byName[c.name.toLowerCase()]=c);$('#champCount').textContent=state.champions.length;$('#championsList').innerHTML=state.champions.map(c=>`<option value="${esc(c.name)}"></option>`).join('');renderRoster();
-}
+async function loadChampions(){try{const vr=await fetch('https://ddragon.leagueoflegends.com/api/versions.json');const versions=await vr.json();state.version=versions[0];const r=await fetch(`https://ddragon.leagueoflegends.com/cdn/${state.version}/data/en_US/champion.json`);const d=await r.json();state.champions=Object.values(d.data).map(x=>({id:x.id,name:x.name,title:x.title,roles:x.tags||[],difficulty:x.info?.difficulty||2}));}catch(e){toast('Не удалось загрузить список чемпионов. Проверь интернет.');throw e}state.champions.forEach(c=>state.byName[c.name.toLowerCase()]=c);$('#champCount').textContent=state.champions.length;$('#championsList').innerHTML=state.champions.map(c=>`<option value="${esc(c.name)}"></option>`).join('');renderRoster()}
 function esc(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function renderRoster(){const q=$('#filterInput').value.toLowerCase();$('#champGrid').innerHTML=state.champions.filter(c=>c.name.toLowerCase().includes(q)).map(c=>`<div class="champ" title="${esc(c.name)}"><img loading="lazy" src="${icon(c)}"><span>${esc(c.name)}</span></div>`).join('')}
 function toast(t){const x=$('#toast');x.textContent=t;x.classList.add('show');setTimeout(()=>x.classList.remove('show'),2400)}
 function setConn(ok){$('#connection').className='connection '+(ok?'online':'offline');$('#connection').textContent=ok?'● Онлайн':'Не подключено';$('#themDot').classList.toggle('muted',!ok)}
 function randomSecret(){return state.champions[Math.floor(Math.random()*state.champions.length)]}
 function send(msg){if(state.action)state.action.send(msg)}
-function showGame(){$('#lobby').classList.add('hidden');$('#room').classList.remove('hidden');$('#waitingCode').textContent=state.room;$('#roomCode').textContent=state.room}
+function showGame(){$('#lobby').classList.add('hidden');$('#room').classList.remove('hidden');$('#roomCode').textContent=state.room}
 function startGame(oppSecret){if(state.gameStarted)return;state.gameStarted=true;state.opponent=oppSecret;state.myTurn=state.isHost;$('#waiting').classList.add('hidden');$('#game').classList.remove('hidden');$('#opponentArt').style.backgroundImage=`url("${art(oppSecret)}")`;$('#opponentStatus').textContent='Чемпион скрыт';$('#secretCard .secret-art').style.backgroundImage=`url("${art(state.secret)}")`;$('#secretCard .secret-art').style.filter='blur(18px) brightness(.35)';updateTurn();resetTimer()}
 function updateTurn(){$('#turnText').textContent=state.myTurn?'ТВОЙ ХОД':'ХОД СОПЕРНИКА';document.querySelectorAll('.turn-actions button,#guessBtn').forEach(b=>b.disabled=!state.myTurn);$('#guessInput').disabled=!state.myTurn}
 function resetTimer(){clearInterval(state.timer);state.time=60;$('#timer').textContent=state.time;state.timer=setInterval(()=>{if(!state.myTurn)return;state.time--;$('#timer').textContent=state.time;if(state.time<=0){clearInterval(state.timer);passTurn()}},1000)}
@@ -22,9 +18,7 @@ function question(label){if(!state.myTurn)return toast('Сейчас ход со
 function addFeed(who,text,answer=''){const f=$('#questionFeed');const d=document.createElement('div');d.className='feed-item';d.textContent=who+': '+text+(answer?' → '+answer:'');f.prepend(d)}
 function answer(a){addFeed('Вы','Ответ',a?'Да':'Нет');send({t:'answer',answer:a});passTurn()}
 function guess(){if(!state.myTurn)return;const c=state.byName[$('#guessInput').value.trim().toLowerCase()];if(!c)return toast('Выбери чемпиона из списка.');send({t:'guess',name:c.name});if(c.id===state.opponent.id)win(true,c);else{addFeed('Вы','Догадка: '+c.name,'Неверно');toast('Не угадал. Ход переходит сопернику.');passTurn()}}
-function win(me,c){state.score+=me?1:0;state.oppScore+=me?0:1;$('#scoreYou').textContent=state.score;$('#scoreThem').textContent=state.oppScore;clearInterval(state.timer);$('#winTitle').textContent=me?'ПОБЕДА':'ПОРАЖЕНИЕ';$('#winSub').textContent=me?`Ты угадал ${c.name}.`:`Соперник угадал твоего чемпиона: ${state.secret.name}.`;
-$('#winArt').style.backgroundImage=`url("${art(me?c:state.secret)}")`;
-$('#winModal').classList.remove('hidden');send({t:'gameover',winner:me?'you':'them'})}
+function win(me,c){state.score+=me?1:0;state.oppScore+=me?0:1;$('#scoreYou').textContent=state.score;$('#scoreThem').textContent=state.oppScore;clearInterval(state.timer);$('#winTitle').textContent=me?'ПОБЕДА':'ПОРАЖЕНИЕ';$('#winSub').textContent=me?`Ты угадал ${c.name}.`:`Соперник угадал твоего чемпиона: ${state.secret.name}.`;$('#winArt').style.backgroundImage=`url("${art(me?c:state.secret)}")`;$('#winModal').classList.remove('hidden');send({t:'gameover',winner:me?'you':'them'})}
 function handle(msg){if(!msg||!msg.t)return;if(msg.t==='hello'){send({t:'ready',secret:state.secret})}else if(msg.t==='ready'){startGame(msg.secret)}else if(msg.t==='question'){addFeed('Соперник',msg.text);toast('Твой ход: ответь Да или Нет.')}else if(msg.t==='answer')addFeed('Соперник','Ответ',msg.answer?'Да':'Нет');else if(msg.t==='turn'){state.myTurn=true;updateTurn();resetTimer();toast('Твой ход.')}else if(msg.t==='guess'){addFeed('Соперник','Догадка: '+msg.name);const c=state.byName[msg.name.toLowerCase()];if(c&&c.id===state.secret.id)win(false,c);else toast('Соперник ошибся.')}else if(msg.t==='gameover')toast(msg.winner==='you'?'Соперник победил.':'Ты победил!')}
 let championsReady=null;
 function makeRoomId(){return 'gr-'+Math.random().toString(36).slice(2,9)+'-'+Math.random().toString(36).slice(2,5)}
@@ -32,20 +26,9 @@ function showNetError(message){const box=$('#netError');box.textContent=message;
 function updateShareUrl(room){try{const url=new URL(location.href);url.searchParams.set('room',room);history.replaceState({},'',url.toString())}catch(e){}}
 function roomFromInput(value){try{const u=new URL(value);return u.searchParams.get('room')||''}catch(e){return value.trim()}}
 function getRoomFromUrl(){try{return new URL(location.href).searchParams.get('room')||''}catch(e){return ''}}
-async function newPeer(){
-  try{
-    const {joinRoom}=await import('https://esm.run/trystero');
-    state.roomObj=joinRoom({appId:'guessrift-lol-v1'},state.room);
-    state.action=state.roomObj.makeAction('game');
-    state.action.onMessage=(msg)=>handle(msg);
-    state.roomObj.onPeerJoin=()=>{setConn(true);send({t:'hello',secret:state.secret})};
-    state.roomObj.onPeerLeave=()=>{setConn(false);toast('Соперник отключился.')};
-    state.roomObj.onPeerJoinError=()=>showNetError('Не удалось найти сетевого соперника. Попробуй ещё раз.');
-    setConn(true);
-    if(state.isHost){updateShareUrl(state.room);showGame();toast('Комната создана. Скопируй ссылку и отправь другу.')}else{showGame();toast('Подключаемся к комнате...')}
-  }catch(e){console.error('Trystero error:',e);setConn(false);showNetError('Не удалось запустить сетевое соединение. Попробуй обновить страницу.')}
-}
-async function createRoom(){try{await championsReady;state.isHost=true;state.secret=randomSecret();state.room=makeRoomId();newPeer()}catch(e){showNetError('Не удалось загрузить чемпионов Riot.')}}
-async function joinRoom(code){try{await championsReady;const room=roomFromInput(code);if(!room)return toast('Вставь ссылку или код комнаты.');state.isHost=false;state.room=room;state.secret=randomSecret();newPeer()}catch(e){showNetError('Не удалось загрузить чемпионов Riot.')}}
+async function loadTrystero(){const urls=['https://cdn.jsdelivr.net/npm/trystero@0.26.0/+esm','https://esm.run/trystero'];let last=null;for(const url of urls){try{return await import(url)}catch(e){last=e;console.warn('Trystero CDN failed:',url,e)}}throw last||new Error('Trystero unavailable')}
+async function newPeer(){try{const {joinRoom}=await loadTrystero();state.roomObj=joinRoom({appId:'guessrift-lol-v1'},state.room,{onJoinError:({peerId,error})=>{console.error('Peer join error',peerId,error);showNetError('Не удалось установить P2P-соединение. Если комната создана, подожди несколько секунд и обнови страницу.')}});state.action=state.roomObj.makeAction('game');state.action.onMessage=(msg)=>handle(msg);state.roomObj.onPeerJoin=()=>{setConn(true);send({t:'hello',secret:state.secret})};state.roomObj.onPeerLeave=()=>{setConn(false);toast('Соперник отключился.')};setConn(false);if(state.isHost){updateShareUrl(state.room);showGame();toast('Комната создана. Скопируй ссылку и отправь другу.')}else{showGame();toast('Подключаемся к комнате...')}}catch(e){console.error('Trystero error:',e);setConn(false);showNetError('Не удалось запустить сетевое соединение. Попробуй ещё раз через несколько секунд.')}}
+async function createRoom(){try{await championsReady;state.isHost=true;state.secret=randomSecret();state.room=makeRoomId();await newPeer()}catch(e){showNetError('Не удалось загрузить чемпионов Riot.')}}
+async function joinRoom(code){try{await championsReady;const room=roomFromInput(code);if(!room)return toast('Вставь ссылку или код комнаты.');state.isHost=false;state.room=room;state.secret=randomSecret();await newPeer()}catch(e){showNetError('Не удалось загрузить чемпионов Riot.')}}
 $('#createBtn').onclick=createRoom;$('#joinBtn').onclick=()=>joinRoom($('#roomInput').value);$('#filterInput').oninput=renderRoster;$('#guessBtn').onclick=guess;$('#passBtn').onclick=passTurn;$('#yesBtn').onclick=()=>answer(true);$('#noBtn').onclick=()=>answer(false);$('#guessInput').addEventListener('keydown',e=>{if(e.key==='Enter')guess()});document.querySelectorAll('[data-question]').forEach(b=>b.onclick=()=>question(b.textContent));$('#copyBtn').onclick=()=>navigator.clipboard?.writeText(location.href).then(()=>toast('Ссылка на игру скопирована.')).catch(()=>toast(location.href));$('#newGameBtn').onclick=()=>location.href=location.pathname;
 championsReady=loadChampions().catch(e=>{console.error(e);throw e});championsReady.then(()=>{const room=getRoomFromUrl();if(room){$('#roomInput').value=room;setTimeout(()=>joinRoom(room),150)}});
