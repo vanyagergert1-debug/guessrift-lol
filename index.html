@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GuessRift — LoL Champion Guess</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cinzel:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="noise"></div>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="crest">✦</div>
+        <div>
+          <div class="eyebrow">LEAGUE OF LEGENDS • DUEL</div>
+          <h1>GUESS<span>RIFT</span></h1>
+        </div>
+      </div>
+      <div id="connection" class="connection offline">Не подключено</div>
+    </header>
+
+    <section id="lobby" class="panel lobby">
+      <div class="hero-copy">
+        <span class="badge">2 PLAYER BROWSER GAME</span>
+        <h2>Угадай чемпиона.<br><em>Переиграй друга.</em></h2>
+        <p>Создай комнату и отправь код другу. У каждого свой тайный чемпион. Задавайте вопросы, отсекайте варианты и первым угадайте героя соперника.</p>
+      </div>
+      <div class="lobby-grid">
+        <button id="createBtn" class="gold-btn">Создать комнату</button>
+        <div class="join-row">
+          <input id="roomInput" maxlength="40" placeholder="Код или ссылка комнаты">
+          <button id="joinBtn" class="dark-btn">Войти</button>
+        </div>
+      </div>
+      <div class="notice">
+        <b>Важно:</b> арты загружаются напрямую из Riot Data Dragon. Игра не требует установки.
+      </div>
+    </section>
+
+    <section id="room" class="hidden">
+      <div class="room-head panel">
+        <div>
+          <span class="eyebrow">КОМНАТА</span>
+          <div class="room-code"><span id="roomCode">—</span><button id="copyBtn">Копировать</button></div>
+        </div>
+        <div class="players">
+          <div class="player-pill"><span id="youDot" class="dot"></span><span id="youName">Вы</span></div>
+          <div class="vs">VS</div>
+          <div class="player-pill"><span id="themDot" class="dot muted"></span><span id="themName">Ожидание…</span></div>
+        </div>
+      </div>
+
+      <div id="waiting" class="panel waiting">
+        <div class="spinner"></div>
+        <h3>Ждём второго игрока</h3>
+        <p>Отправь другу ссылку комнаты.</p>
+      </div>
+
+      <div id="game" class="hidden">
+        <div class="turnbar panel">
+          <div><span class="eyebrow">ХОД</span><strong id="turnText">—</strong></div>
+          <div id="timer">60</div>
+          <div class="score"><span id="scoreYou">0</span> : <span id="scoreThem">0</span></div>
+        </div>
+
+        <div class="game-grid">
+          <aside class="panel sidebar">
+            <div class="section-title">Твой тайный чемпион</div>
+            <div id="secretCard" class="secret-card">
+              <div class="secret-art"></div>
+              <div class="secret-label">СКРЫТ ОТ СОПЕРНИКА</div>
+            </div>
+            <div class="section-title tips-title">Подсказки</div>
+            <div class="tips">
+              <button data-question="role">Роль</button>
+              <button data-question="region">Регион</button>
+              <button data-question="difficulty">Сложность</button>
+              <button data-question="melee">Ближний бой?</button>
+              <button data-question="resource">Ресурс</button>
+            </div>
+          </aside>
+
+          <section class="panel center">
+            <div class="opponent-card">
+              <div class="opponent-art" id="opponentArt"></div>
+              <div class="opponent-overlay">
+                <span class="eyebrow">ЧЕМПИОН СОПЕРНИКА</span>
+                <h3 id="opponentStatus">Неизвестно</h3>
+              </div>
+            </div>
+
+            <div class="ask-box">
+              <div class="section-title">Задай вопрос или сделай догадку</div>
+              <div class="guess-row">
+                <input id="guessInput" list="championsList" placeholder="Имя чемпиона…">
+                <datalist id="championsList"></datalist>
+                <button id="guessBtn" class="gold-btn small">Угадать</button>
+              </div>
+              <div id="questionFeed" class="feed"></div>
+            </div>
+
+            <div class="turn-actions">
+              <button id="yesBtn" class="answer-btn">Да</button>
+              <button id="noBtn" class="answer-btn">Нет</button>
+              <button id="passBtn" class="dark-btn">Передать ход</button>
+            </div>
+          </section>
+
+          <aside class="panel roster">
+            <div class="section-title">Ростер <span id="champCount">—</span></div>
+            <input id="filterInput" class="filter" placeholder="Поиск чемпиона…">
+            <div id="champGrid" class="champ-grid"></div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div><div id="netError" class="net-error hidden"></div>
+  <div id="winModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="eyebrow">ДУЭЛЬ ОКОНЧЕН</div>
+      <h2 id="winTitle">Победа!</h2>
+      <div id="winArt" class="win-art"></div>
+      <p id="winSub"></p>
+      <button id="newGameBtn" class="gold-btn">Новая игра</button>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
